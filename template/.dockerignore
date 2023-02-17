@@ -1,0 +1,23 @@
+# IDE
+.vscode
+.idea
+
+# misc
+.DS_Store
+.gitignore
+config.yaml
+
+# docker
+.dockerignore 
+docker-compose.yml
+
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+node_modules/

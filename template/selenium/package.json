@@ -1,0 +1,6 @@
+{
+    "scripts": {
+        "mocha-babel": "mocha --require @babel/register",
+        "test:selenium": "yarn mocha-babel test/* -b"
+    }
+}

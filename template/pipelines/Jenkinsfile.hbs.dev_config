@@ -1,0 +1,65 @@
+withCredentials([
+    usernamePassword(credentialsId: '{{lower name}}1-dev-oauth-client', passwordVariable: '{{~loud name}}1_DEV_OAUTH_CLIENT_SECRET', usernameVariable: '{{~loud name}}1_DEV_OAUTH_CLIENT_ID'),
+    usernamePassword(credentialsId: '{{lower name}}2-dev-oauth-client', passwordVariable: '{{~loud name}}2_DEV_OAUTH_CLIENT_SECRET', usernameVariable: '{{~loud name}}2_DEV_OAUTH_CLIENT_ID'),
+    usernamePassword(credentialsId: '{{lower name}}3-dev-oauth-client', passwordVariable: '{{~loud name}}3_DEV_OAUTH_CLIENT_SECRET', usernameVariable: '{{~loud name}}3_DEV_OAUTH_CLIENT_ID'),
+]) {
+  NODE_DATA = [
+      // NOTE: Enable when setting up new STRATO nodes
+      // MONITOR: [
+      //     NETWORK_HEALTH_URL: "https://monitor.example.com/health"  // URL for health endpoint of STRATO Central Monitoring Dashboard (CMD)
+      // ],
+      NODE1: [
+          NUMBER             : "1",
+          APP_HOST           : "node1.{{lower name}}-dev-random_string_here.example.com",
+          APP_IP             : "node1.ip.address.here",
+          STRATO_HOSTNAME    : "strato_node_hostname_here",
+          STRATO_PORT        : 443,
+          STRATO_ADDRESS     : "strato_node_address_here", // TODO: get from STRATO Metadata API
+          STRATO_PUBKEY      : "strato_node_public_key_here", // TODO: get from STRATO Metadata API
+          //STRATO_LOCAL_IP    : '172.17.0.1',  // Only enable when running STRATO node locally
+          //BOOTNODE_IP        : "", // Enable when setting up new STRATO node conected to Mercata
+          OAUTH_DISCOVERY_URL: "https://example.com/{{lower name}}/.well-known/openid-configuration",
+          OAUTH_CLIENT_ID    : "${ {{~loud name}}1_DEV_OAUTH_CLIENT_ID}",
+          OAUTH_CLIENT_SECRET: "${ {{~loud name}}1_DEV_OAUTH_CLIENT_SECRET}",
+          ORG_NAME           : "org_name_here",
+          ADMIN_NAME         : "admin_username_here",
+          ADMIN_PASSWORD     : "admin_user_password_here",
+      ],
+      NODE2: [
+          NUMBER             : "2",
+          APP_HOST           : "node2.{{lower name}}-dev-random_string_here.example.com",
+          APP_IP             : "node2.ip.address.here",
+          STRATO_HOSTNAME    : "strato_node_hostname_here",
+          STRATO_PORT        : 443,
+          STRATO_ADDRESS     : "strato_node_address_here", // TODO: get from STRATO Metadata API
+          STRATO_PUBKEY      : "strato_node_public_key_here", // TODO: get from STRATO Metadata API
+          //STRATO_LOCAL_IP    : '172.17.0.1',  // Only enable when running STRATO node locally
+          //BOOTNODE_IP        : "", // Enable when setting up new STRATO node conected to Mercata
+          OAUTH_DISCOVERY_URL: "https://example.com/{{lower name}}/.well-known/openid-configuration",
+          OAUTH_CLIENT_ID    : "${ {{~loud name}}2_DEV_OAUTH_CLIENT_ID}",
+          OAUTH_CLIENT_SECRET: "${ {{~loud name}}2_DEV_OAUTH_CLIENT_SECRET}",
+          //ORG_NAME           : "org_name_here",
+          //ADMIN_NAME         : "admin_username_here",
+          //ADMIN_PASSWORD     : "admin_user_password_here",
+      ],
+      NODE3: [
+          NUMBER             : "3",
+          APP_HOST           : "node3.{{lower name}}-dev-random_string_here.example.com",
+          APP_IP             : "node3.ip.address.here",
+          STRATO_HOSTNAME    : "strato_node_hostname_here",
+          STRATO_PORT        : 443,
+          STRATO_ADDRESS     : "strato_node_address_here", // TODO: get from STRATO Metadata API
+          STRATO_PUBKEY      : "strato_node_public_key_here", // TODO: get from STRATO Metadata API
+          //STRATO_LOCAL_IP    : '172.17.0.1',  // Only enable when running STRATO node locally
+          //BOOTNODE_IP        : "", // Enable when setting up new STRATO node conected to Mercata
+          OAUTH_DISCOVERY_URL: "https://example.com/{{lower name}}/.well-known/openid-configuration",
+          OAUTH_CLIENT_ID    : "${ {{~loud name}}3_DEV_OAUTH_CLIENT_SECRET}",
+          OAUTH_CLIENT_SECRET: "${ {{~loud name}}3_DEV_OAUTH_CLIENT_SECRET}",
+          //ORG_NAME           : "org_name_here",
+          //ADMIN_NAME         : "admin_username_here",
+          //ADMIN_PASSWORD     : "admin_user_password_here",
+      ],
+  ]
+}
+
+return this

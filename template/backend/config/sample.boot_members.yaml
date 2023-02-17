@@ -1,0 +1,9 @@
+members:
+  - organization: 'BlockApps'
+    unit: 'Apps'
+    commonName: 'AppsNode1'
+  
+  - organization: 'Apple'
+  
+  - organization: 'Microsoft'
+    unit: 'Engineering'

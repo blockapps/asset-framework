@@ -1,0 +1,177 @@
+/*
+TODO: Uncomment once the STRATO deployment process is updated for Mercata
+pipeline {
+  agent { label "{{lower name}}-dev1" }
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+  parameters {
+    string(name: 'STRATO_BUILD', defaultValue: 'latest', description: 'The STRATO version to be used for deployment (where to fetch the docker-compose.yml from). \n' +
+        'Default: "latest" (latest public release).\n\n' +
+        'Formats supported:\n' +
+        ' - "latest" - for latest public release\n' +
+        ' - "X.Y.Z" (i.e. "7.5.0") - for specific public release version\n' +
+        ' - "branch_name/build_number" (i.e. "develop/206") - for the custom build of STRATO_autobuild multibranch job in Jenkins.'
+    )
+    booleanParam(name: 'WIPE_VAULT', defaultValue: false, description: 'Run --wipe rather than --dropChains. ' +
+        'This will wipe the vault data which includes the user/account private keys and node\'s keys and address')
+  }
+
+  stages {
+    stage('Preconfigure') {
+      steps {
+        wrap([$class: 'BuildUser']) {
+          script {
+            try {
+              currentBuild.description = "STRATO:${env.STRATO_BUILD} // ${BUILD_USER_FIRST_NAME}"
+            } catch (e) {
+              currentBuild.description = "STRATO:${env.STRATO_BUILD} // anon"
+            }
+          }
+        }
+        
+        script {
+          lib = load("${env.WORKSPACE}/pipelines/Jenkinsfile.library")
+          NODE_DATA = load("${env.WORKSPACE}/pipelines/Jenkinsfile.dev_config").NODE_DATA
+        }
+      }
+    }
+
+    stage('Prep') {
+      steps {
+        sh "sudo rm -rf strato-getting-started"
+        sh "git clone https://github.com/blockapps/strato-getting-started"
+        dir('strato-getting-started') {
+          script {
+            if (env.STRATO_BUILD == 'latest') {
+              sh 'sudo ./strato --compose'
+            } else {
+              if (env.STRATO_BUILD.contains(".")) {
+                sh "curl -s -L https://github.com/blockapps/strato-getting-started/releases/${env.STRATO_BUILD} | egrep -o '/blockapps/strato-getting-started/releases/download/.*/docker-compose.yml' | wget --base=http://github.com/ -i - -O docker-compose.yml"
+              } else {
+                if (!env.STRATO_BUILD.contains("/")) {
+                  echo "Unexpected STRATO_BUILD format: ${env.STRATO_BUILD}"
+                  currentBuild.result = 'FAILURE'
+                  sh "exit 1"
+                }
+                def (AUTOBUILD_JOB_BRANCH_NAME, AUTOBUILD_JOB_BUILD_NUMBER) = "${env.STRATO_BUILD}".tokenize( '/' )
+                
+                // Fetching artifact from STRATO_autobuild multibranch job
+                step([
+                    $class: 'CopyArtifact',
+                    fingerprintArtifacts: true,
+                    flatten: true,
+                    projectName: "STRATO_autobuild/${AUTOBUILD_JOB_BRANCH_NAME}",
+                    selector: [$class: 'SpecificBuildSelector', buildNumber: "${AUTOBUILD_JOB_BUILD_NUMBER}"],
+                    filter: "docker-compose.yml",
+                    target: '.',
+                    optional: false
+                ])
+                
+              }
+            }
+          }
+          withCredentials([
+              usernamePassword(credentialsId: 'docker-aws-registry-login', passwordVariable: 'DOCKER_PASSWD', usernameVariable: 'DOCKER_USER'),
+          ]) {
+            sh "sudo docker login -u $DOCKER_USER -p $DOCKER_PASSWD registry-aws.blockapps.net:5000"
+          }
+        }
+        stash includes: 'strato-getting-started/**', name: 'stratoGettingStarted'
+      }
+    }
+
+    stage ('Tear down') {
+      parallel {
+        stage('Clean {{lower name}}-dev1') {
+          // agent { label "{{lower name}}-dev1" } // is default
+          steps { script { lib.cleanNode(params.WIPE_VAULT) } }
+        }
+        stage('Clean {{lower name}}-dev2') {
+          agent { label "{{lower name}}-dev2" }
+          steps { script { lib.cleanNode(params.WIPE_VAULT) } }
+        }
+        stage('Clean {{lower name}}-dev3') {
+          agent { label "{{lower name}}-dev3" }
+          steps { script { lib.cleanNode(params.WIPE_VAULT) } }
+        }
+      }
+    }
+
+    stage ('Deploy STRATO nodes') {
+      parallel {
+        stage('Deploy {{lower name}}-dev1') {
+          // agent { label "{{lower name}}-dev1" } // is default
+          steps {
+            script {
+              node2Address = lib.deployStrato(NODE_DATA.NODE1)
+            }
+          }
+        }
+        stage('Deploy {{lower name}}-dev2') {
+          agent { label "{{lower name}}-dev2" }
+          steps {
+            script {
+              node2Address = lib.deployStrato(NODE_DATA.NODE2)
+            }
+          }
+        }
+        stage('Deploy {{lower name}}-dev3') {
+          agent { label "{{lower name}}-dev3" }
+          steps {
+            script {
+              node3Address = lib.deployStrato(NODE_DATA.NODE3)
+            }
+          }
+        }
+      }
+    }
+
+    stage('Wait for syncing') {
+      // agent { label "{{lower name}}-dev1" } // is default
+      steps {
+        script {
+          lib.waitForHealthyNetwork(NODE_DATA.MONITOR)
+        }
+      }
+    }
+  }
+
+  post {
+
+    success {
+      slackSend(
+          color: 'good',
+          message: "{{lower name}}-dev STRATO network was redeployed successfully with STRATO build '${env.STRATO_BUILD}': Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}-ci',
+          color: 'good',
+          message: "{{lower name}}-dev STRATO network was redeployed successfully with STRATO build '${env.STRATO_BUILD}': Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}',
+          color: 'good',
+          message: "{{lower name}}-dev STRATO network was redeployed successfully with STRATO build '${env.STRATO_BUILD}': Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+    }
+
+    failure {
+      slackSend(
+          color: 'danger',
+          message: "{{lower name}}-dev STRATO network redeployment failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}-ci',
+          color: 'danger',
+          message: "{{lower name}}-dev STRATO network redeployment failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}',
+          color: 'danger',
+          message: "{{lower name}}-dev STRATO network redeployment failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+    }
+  }
+}

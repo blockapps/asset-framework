@@ -1,0 +1,96 @@
+version: "3.2"
+volumes:
+  config:
+    driver: local
+  logs:
+    driver: local
+services:
+  backend:
+    image: {{snake_case name}}-backend:latest
+    build: ./backend
+    restart: always
+    environment:
+      - IS_BOOTNODE=${IS_BOOTNODE:-false}
+      - API_DEBUG=${API_DEBUG:-false}
+      - CONFIG_DIR_PATH=/config
+      - DEPLOY_FILE_NAME=${DEPLOY_FILE_NAME:-{{lower name}}.deploy.yaml}
+      - ORG_DEPLOY_FILE_NAME=${DEPLOY_FILE_NAME:-org.deploy.yaml}
+      - APPLICATION_USER_NAME=${APPLICATION_USER_NAME:-APP_USER}
+      - SERVER_HOST=${SERVER_HOST}
+      - SERVER_IP=${SERVER_IP}
+      - NODE_LABEL=${NODE_LABEL}
+      - STRATO_NODE_PROTOCOL=${STRATO_NODE_PROTOCOL:-http}
+      - STRATO_NODE_HOST=${STRATO_NODE_HOST:-strato_nginx_1:80}
+      - STRATO_LOCAL_IP=${STRATO_LOCAL_IP:-} # Non-empty value will create /etc/hosts record in container to resolve hostname provided in STRATO_HOST to STRATO_LOCAL_IP. Example: `172.17.0.1` (docker0 IP of machine - see `ifconfig`). Otherwise - will resolve hostname with public DNS (check STRATO port in Security Group).
+      - NODE_PUBLIC_KEY=${NODE_PUBLIC_KEY:-6d8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0}
+      - OAUTH_APP_TOKEN_COOKIE_NAME=${OAUTH_APP_TOKEN_COOKIE_NAME:-{{lower name}}_session}
+      - OAUTH_OPENID_DISCOVERY_URL=${OAUTH_OPENID_DISCOVERY_URL}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OAUTH_SCOPE=${OAUTH_SCOPE:-email openid}
+      - OAUTH_SERVICE_OAUTH_FLOW=${OAUTH_SERVICE_OAUTH_FLOW:-client-credential}
+      - OAUTH_TOKEN_FIELD=${OAUTH_TOKEN_FIELD:-access_token}
+      - OAUTH_TOKEN_USERNAME_PROPERTY=${OAUTH_TOKEN_USERNAME_PROPERTY:-email}
+      - OAUTH_TOKEN_USERNAME_PROPERTY_SERVICE_FLOW=${OAUTH_TOKEN_USERNAME_PROPERTY_SERVICE_FLOW:-email}
+      - ORG_NAME=${ORG_NAME:-}
+      - ADMIN_NAME=${ADMIN_NAME:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    volumes:
+      - config:/config:rw
+      - logs:/usr/src/backend/logs
+      - type: bind
+        source: ./backend/.env
+        target: /usr/src/backend/.env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+  ui:
+    depends_on:
+      - backend
+    image: {{snake_case name}}-ui:latest
+    build: ./ui
+    restart: always
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+  nginx:
+    depends_on:
+      - ui
+      - backend
+    image: {{snake_case name}}-nginx:latest
+    build: ./nginx-docker
+    restart: always
+    ports:
+      # we do not map port 80 because it is mapped by http-redirect container which we can stop temporarily for letsencrypt cert renewal without app downtime
+      #- 80:80
+      - 443:443
+    volumes:
+      - ./nginx-docker/ssl:/tmp/ssl:ro
+    environment:
+      - SSL=${SSL:-true}
+      - SSL_CERT_TYPE=${SSL_CERT_TYPE:-crt}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+  #this is the block to comment out if SSL is not needed
+  http-redirect:
+    depends_on:
+      - nginx
+    image: {{snake_case name}}-http-redirect:latest
+    build: ./nginx-docker/redirect-http-to-https
+    restart: always
+    ports:
+      - 80:80
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"

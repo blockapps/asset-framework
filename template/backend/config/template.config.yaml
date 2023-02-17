@@ -1,0 +1,29 @@
+apiDebug: <apiDebug_value>
+timeout: 600000
+VM: SolidVM
+configDirPath: <configDirPath_value>
+deployFilename: <deployFilename_value>
+orgDeployFilename: <orgDeployFilename_value>
+serverHost: <serverHost_value>
+serverIP: <serverIP_value>
+orgName: <orgName_value>
+
+nodes:
+  - id: 0
+    label: <node_label_value>
+    url: <node_url_value>
+    port: 30303
+    oauth:
+      appTokenCookieName: <oauth_appTokenCookieName_value>
+      appTokenCookieMaxAge: 7776000000
+      openIdDiscoveryUrl: >-
+        <oauth_openIdDiscoveryUrl_value>
+      clientId: <oauth_clientId_value>
+      clientSecret: <oauth_clientSecret_value>
+      scope: <oauth_scope_value>
+      serviceOAuthFlow: <oauth_serviceOAuthFlow_value>
+      redirectUri: <oauth_redirectUri_value>
+      logoutRedirectUri: <oauth_logoutRedirectUri_value>
+      tokenField: <oauth_tokenField_value>
+      tokenUsernameProperty: <oauth_tokenUsernameProperty_value>
+      tokenUsernamePropertyServiceFlow: <oauth_tokenUsernamePropertyServiceFlow_value>

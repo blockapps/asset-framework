@@ -1,0 +1,37 @@
+paths:
+  /users:
+    get:
+      security:              
+        - bearerAuth: []                 
+      tags:               
+        - Users        
+      summary: retrieve users
+      produces:
+      - application/json
+      responses:         
+        200:
+          description: Array of users
+  /users/{address}:
+    get:          
+      security:              
+        - bearerAuth: []       
+      tags:               
+        - Users        
+      summary: retrieve a user
+      produces:
+      - application/json
+      parameters:         
+      - in: path          
+        name: address     
+        description: address to retrieve the user
+        required: true
+        schema:       
+          $ref: '#/definitions/fetchUser' 
+      responses:         
+        200:
+          description: retrieve a user
+definitions:        
+  fetchUser:
+    address:
+      type: string
+      

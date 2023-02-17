@@ -1,0 +1,572 @@
+def cleanNode(wipeVault = null) {
+  sh "sudo rm -rf strato-getting-started"
+  unstash 'stratoGettingStarted'
+  dir("strato-getting-started") {
+    // TODO: remove --drop-chains. Remove wipeVault?
+    if (wipeVault) {
+      sh "sudo ./strato --wipe"
+    } else {
+      sh "sudo ./strato --drop-chains"
+    }
+  }
+}
+
+// TODO: Update to address changes in STRATO 9.0 and to comply with Mercata
+//def deployStrato(nodeData) {
+//  sh "sudo rm -rf strato-getting-started"
+//  unstash 'stratoGettingStarted'
+//  dir("strato-getting-started") {
+//    sh "sudo chmod 777 /datadrive/letsencrypt-ssl/*"
+//    sh "cp /datadrive/letsencrypt-ssl/server.pem ssl/certs/"
+//    sh "cp /datadrive/letsencrypt-ssl/server.key ssl/private/"
+//    withCredentials([
+//        usernamePassword(credentialsId: 'docker-aws-registry-login', passwordVariable: 'DOCKER_PASSWD', usernameVariable: 'DOCKER_USER'),
+//    ]) {
+//      sh "sudo docker login -u $DOCKER_USER -p $DOCKER_PASSWD registry-aws.blockapps.net:5000"
+//    }
+//    sh "sudo ./strato --pull"
+//
+//    withCredentials([
+//        //usernamePassword(credentialsId: 'aws-s3-test-bucket-access-user', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID'),
+//        // // TODO: every node to use a separate client
+//        //usernamePassword(credentialsId: '{{lower name}}-dev-nodes-oauth-client', passwordVariable: '{{loud name}}_DEV_OAUTH_CLIENT_SECRET', usernameVariable: '{{loud name}}_DEV_OAUTH_CLIENT_ID')
+//    ]) {
+//      def runCommand
+//      if (nodeData.NETWORK_ID) {
+//        if (nodeData.BOOTNODE_IP == null || nodeData.VALIDATORS == null) {
+//          echo "NETWORK_ID is provided for the node but BOOTNODE_IP or VALIDATORS are not set."
+//          currentBuild.result = 'FAILURE'
+//          sh "exit 1"
+//        }
+//        runCommand = """#!/bin/bash
+//        sudo \\
+//        OAUTH_ENABLED=true \\
+//        OAUTH_DISCOVERY_URL=${nodeData.OAUTH_DISCOVERY_URL} \\
+//        OAUTH_JWT_USERNAME_PROPERTY=preferred_username \\
+//        OAUTH_CLIENT_ID=${nodeData.OAUTH_CLIENT_ID} \\
+//        OAUTH_CLIENT_SECRET=${nodeData.OAUTH_CLIENT_SECRET} \\
+//        PASSWORD=123 \\
+//        ssl=true \\
+//        sslCertFileType=pem \\
+//        NODE_HOST="${nodeData.HOST}:${nodeData.PORT}" \\
+//        HTTPS_PORT="${nodeData.PORT}" \\
+//        networkID="${nodeData.NETWORK_ID}" \\
+//        BOOT_NODE_IP="${nodeData.BOOTNODE_IP}" \\
+//        validators="${nodeData.VALIDATORS}" \\
+//        isAdmin=true \\
+//        ./strato --blockstanbul"""
+//      } else {
+//        runCommand = """#!/bin/bash
+//        sudo \\
+//        OAUTH_ENABLED=true \\
+//        OAUTH_DISCOVERY_URL=${nodeData.OAUTH_DISCOVERY_URL} \\
+//        OAUTH_JWT_USERNAME_PROPERTY=preferred_username \\
+//        OAUTH_CLIENT_ID=${nodeData.OAUTH_CLIENT_ID} \\
+//        OAUTH_CLIENT_SECRET=${nodeData.OAUTH_CLIENT_SECRET} \\
+//        PASSWORD=123 \\
+//        ssl=true \\
+//        sslCertFileType=pem \\
+//        NODE_HOST="${nodeData.HOST}:${nodeData.PORT}" \\
+//        HTTPS_PORT="${nodeData.PORT}" \\
+//        network="blockappsnet" \\
+//        isAdmin=true \\
+//        ./strato --blockstanbul"""
+//      }
+//      writeFile file:"run.sh", text: """${runCommand}"""
+//      sh "chmod +x run.sh"
+//      sh "sudo ./run.sh"
+//
+//    }
+//    sh "until curl --silent localhost:8080; do sleep 1; done"
+//    sh "sudo docker ps"
+//
+//    def nodeAddress = sh(
+//        returnStdout: true,
+//        script: "sudo ./strato --get-address"
+//    ).trim()
+//    writeFile file: "nodeAddress", text: "${nodeAddress}"
+//
+//    // Save node's public key into file (for future reference)
+//    def nodePubKey = sh(
+//        returnStdout: true,
+//        script: "sudo docker exec strato_strato_1 bash -c \"curl -s GET http://vault-wrapper:8000/strato/v2.3/key -H \\\"X-USER-UNIQUE-NAME: nodekey\\\" | python3 -c \\\"import sys, json; print(json.load(sys.stdin)['pubkey'])\\\"\""
+//    ).trim()
+//    writeFile file: "nodePublicKey", text: "${nodePubKey}"
+//
+//    return nodeAddress
+//  }
+//}
+
+///**
+// * Deploy STRATO nodes on a standalone network, with root node and secondary nodes.
+// * @param nodeData
+// * @param rootNodeAddress address of the root node. Deploys the root node if not provided.
+// * @return
+// */
+//def deployStratoStandalone(nodeData, rootNodeAddress = null) {
+//  sh "sudo rm -rf strato-getting-started"
+//  unstash 'stratoGettingStarted'
+//  dir("strato-getting-started") {
+//    sh "sudo chmod 777 /datadrive/letsencrypt-ssl/*"
+//    sh "cp /datadrive/letsencrypt-ssl/server.pem ssl/certs/"
+//    sh "cp /datadrive/letsencrypt-ssl/server.key ssl/private/"
+//    withCredentials([
+//        usernamePassword(credentialsId: 'docker-aws-registry-login', passwordVariable: 'DOCKER_PASSWD', usernameVariable: 'DOCKER_USER'),
+//    ]) {
+//      sh "sudo docker login -u $DOCKER_USER -p $DOCKER_PASSWD registry-aws.blockapps.net:5000"
+//    }
+//    sh "sudo ./strato --pull"
+//
+//    withCredentials([
+//        //usernamePassword(credentialsId: 'aws-s3-test-bucket-access-user', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID'),
+//        //usernamePassword(credentialsId: '{{lower name}}-dev-nodes-oauth-client', passwordVariable: '{{loud name}}_DEV_OAUTH_CLIENT_SECRET', usernameVariable: '{{loud name}}_DEV_OAUTH_CLIENT_ID')
+//    ]) {
+//      def runCommand = """#!/bin/bash
+//        sudo \\
+//        OAUTH_ENABLED=true \\
+//        OAUTH_DISCOVERY_URL=${nodeData.OAUTH_DISCOVERY_URL} \\
+//        OAUTH_JWT_USERNAME_PROPERTY=preferred_username \\
+//        OAUTH_CLIENT_ID=${nodeData.OAUTH_CLIENT_ID} \\
+//        OAUTH_CLIENT_SECRET=${nodeData.OAUTH_CLIENT_SECRET} \\
+//        PASSWORD=123 \\
+//        ssl=true \\
+//        sslCertFileType=pem \\
+//        NODE_HOST="${nodeData.HOST}:${nodeData.PORT}" \\
+//        HTTPS_PORT="${nodeData.PORT}" \\
+//        networkID="${nodeData.NETWORK_ID}" \\
+//        BOOT_NODE_IP="${nodeData.BOOTNODE_IP}" \\"""
+//      if (rootNodeAddress == null) {
+//        runCommand = """${runCommand}
+//          isRootNode=true \\"""
+//      } else {
+//        runCommand = """${runCommand}
+//          validators='["${rootNodeAddress}"]' \\
+//          blockstanbulAdmins='["${rootNodeAddress}"]' \\"""
+//      }
+//      runCommand = """${runCommand}
+//        ./strato --blockstanbul"""
+//      writeFile file:"run.sh", text: """${runCommand}"""
+//      sh "chmod +x run.sh"
+//      sh "sudo ./run.sh"
+//
+//    }
+//    sh "until curl --silent localhost:8080; do sleep 1; done"
+//    sh "sudo docker ps"
+//
+//    def nodeAddress = sh(
+//        returnStdout: true,
+//        script: "sudo ./strato --get-address"
+//    ).trim()
+//    writeFile file: "nodeAddress", text: "${nodeAddress}"
+//
+//    // Save node's public key into file (for future reference)
+//    def nodePubKey = sh(
+//        returnStdout: true,
+//        script: "sudo docker exec strato_strato_1 bash -c \"curl -s GET http://vault-wrapper:8000/strato/v2.3/key -H \\\"X-USER-UNIQUE-NAME: nodekey\\\" | python3 -c \\\"import sys, json; print(json.load(sys.stdin)['pubkey'])\\\"\""
+//    ).trim()
+//    writeFile file: "nodePublicKey", text: "${nodePubKey}"
+//
+//    return nodeAddress
+//  }
+//}
+
+def runAppBootNode(nodeData, allNodesData, refspec, wipeApp = null) {
+
+  withCredentials([
+      usernamePassword(credentialsId: 'blockapps-cd-github', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USERNAME'),
+  ]) {
+
+    sh 'sudo rm -rf {{lower name}}'
+    // Git clone may fail with nginx-docker/ssl issues because the previously running nginx container may be restarting and will re-create the volume ssl/ dir
+    sh "git clone https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/blockapps/{{lower name}}.git -b develop"
+
+    dir('{{lower name}}') {
+      sh 'git fetch'
+      sh "git checkout ${refspec} --" // -- here is the git way to tell it is a refspec and not the file path for checkout
+      sh 'git pull'
+      sh "cp /datadrive/letsencrypt-ssl/server.pem nginx-docker/ssl/"
+      sh "cp /datadrive/letsencrypt-ssl/server.key nginx-docker/ssl/"
+      script {
+        sh 'rm -f run-app.sh'
+        def authCookieName = "{{lower name}}-dev${nodeData.NUMBER}-auth"
+  
+        dir('backend') {
+          lib.createDotEnvFile(nodeData)
+        }
+        
+        writeFile file: "run-app.sh", text: """#!/bin/bash
+set -e
+
+export IS_BOOTNODE='true'
+export API_DEBUG='true'
+export SERVER_HOST='https://${nodeData.APP_HOST}'
+export SERVER_IP='${nodeData.APP_IP}'
+export NODE_LABEL='node${nodeData.NUMBER}'
+export NODE_PUBLIC_KEY='${nodeData._PUBKEY}'
+export OAUTH_APP_TOKEN_COOKIE_NAME='${authCookieName}'
+export OAUTH_OPENID_DISCOVERY_URL='${nodeData.OAUTH_DISCOVERY_URL}'
+export OAUTH_CLIENT_ID='${nodeData.OAUTH_CLIENT_ID}'
+export OAUTH_CLIENT_SECRET='${nodeData.OAUTH_CLIENT_SECRET}'
+export OAUTH_TOKEN_USERNAME_PROPERTY='preferred_username'
+export OAUTH_TOKEN_USERNAME_PROPERTY_SERVICE_FLOW='preferred_username'
+export STRATO_NODE_PROTOCOL='https'
+export STRATO_NODE_HOST='${nodeData.STRATO_HOSTNAME}:${nodeData.STRATO_PORT}'
+export STRATO_LOCAL_IP='${nodeData.STRATO_LOCAL_IP ?: ""}'
+export SSL=true
+export SSL_CERT_TYPE=pem
+export DAEMONS_ENABLED='true'
+export ORG_NAME='${nodeData.ORG_NAME}'
+export ADMIN_NAME='${nodeData.ADMIN_NAME}'
+export ADMIN_PASSWORD='${nodeData.ADMIN_PASSWORD}'
+
+# CUSTOM_NPM_SCRIPT__OPTIONAL
+
+docker-compose up -d --build
+        """
+        if (wipeApp) {
+          //sh 'sudo docker volume rm {{snake_case name}}_config || true'
+          sh 'sudo docker-compose down -v -t 0  --remove-orphans'
+        }
+        
+        /*  // for potential future use 
+        sh 'echo "members:" > backend/config/boot_members.yaml'
+        allNodesData.each { key, ndata ->
+          if ("${key}" != 'MONITOR' && "${ndata.NUMBER}" != "${nodeData.NUMBER}") {
+            sh """#!/bin/bash -le
+              set -x
+              echo "  - address: ${ndata._ADDRESS}" >> backend/config/boot_members.yaml
+              echo "    publicKey: ${ndata._PUBKEY}" >> backend/config/boot_members.yaml
+              echo "    nodeIP: ${ndata.IP}" >> backend/config/boot_members.yaml
+              echo "    nodeLabel: node${ndata.NUMBER}" >> backend/config/boot_members.yaml
+            """
+          }
+        }
+        */
+        
+        sh 'sudo bash run-app.sh'
+
+        // Stash the deploy file:
+        def dappConfigVolumePath = sh(
+            returnStdout: true,
+            script: 'sudo docker volume inspect {{snake_case name}}_config | jq .[0].Mountpoint'
+        ).trim()
+        for (int i = 0; i < 50; i++) {
+          if (sh(returnStatus: true, script: "sudo ls ${dappConfigVolumePath} | grep {{lower name}}.deploy.yaml") != 0) {
+            sleep 2
+          }
+        }
+        // Can't cd directly into docker volume path (requires sudo su), so copying deploy file into tmp/
+        sh 'mkdir tmp'
+        sh "sudo cp ${dappConfigVolumePath}/{{lower name}}.deploy.yaml tmp/"
+        dir('tmp') {
+          stash includes: "{{lower name}}.deploy.yaml", name: 'deployFile'
+        }
+        sh 'rm -rf tmp'
+      }
+      waitForHealthyDappContainers()
+    }
+  }
+}
+
+def runAppSecondaryNode(nodeData, refspec, wipeApp = null) {
+  withCredentials([
+      usernamePassword(credentialsId: 'blockapps-cd-github', passwordVariable: 'GITHUB_TOKEN', usernameVariable: 'GITHUB_USERNAME'),
+  ]) {
+
+    sh 'sudo rm -rf {{lower name}}'
+    sh "git clone https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/blockapps/{{lower name}}.git -b develop"
+
+    dir('{{lower name}}') {
+      sh 'git fetch'
+      sh "git checkout ${refspec} --" // -- here is the git way to tell it is a refspec and not the file path for checkout
+      sh 'git pull'
+      sh "cp /datadrive/letsencrypt-ssl/server.pem nginx-docker/ssl/"
+      sh "cp /datadrive/letsencrypt-ssl/server.key nginx-docker/ssl/"
+      script {
+        sh 'rm -f run-app.sh'
+        def authCookieName = "{{lower name}}-dev${nodeData.NUMBER}-auth"
+  
+        // TODO: adjust .env for secondary node
+        //dir('backend') {
+          //lib.createDotEnvFile(nodeData)
+        //}
+        
+        writeFile file: "run-app.sh", text: """
+#!/bin/bash
+set -e
+
+export IS_BOOTNODE='false'
+export API_DEBUG='true'
+export SERVER_HOST='https://${nodeData.APP_HOST}'
+export SERVER_IP='${nodeData.APP_IP}'
+export NODE_LABEL='node${nodeData.NUMBER}'
+export NODE_PUBLIC_KEY='${nodeData._PUBKEY}'
+export OAUTH_APP_TOKEN_COOKIE_NAME='${authCookieName}'
+export OAUTH_OPENID_DISCOVERY_URL='${nodeData.OAUTH_DISCOVERY_URL}'
+export OAUTH_CLIENT_ID='${nodeData.OAUTH_CLIENT_ID}'
+export OAUTH_CLIENT_SECRET='${nodeData.OAUTH_CLIENT_SECRET}'
+export OAUTH_TOKEN_USERNAME_PROPERTY='preferred_username'
+export OAUTH_TOKEN_USERNAME_PROPERTY_SERVICE_FLOW='preferred_username'
+export STRATO_NODE_PROTOCOL='https'
+export STRATO_NODE_HOST='${nodeData.STRATO_HOSTNAME}:${nodeData.STRATO_PORT}'
+export STRATO_LOCAL_IP='${nodeData.STRATO_LOCAL_IP ?: ""}'
+export SSL=true
+export SSL_CERT_TYPE=pem
+export DAEMONS_ENABLED='true'
+export ORG_NAME='${nodeData.ORG_NAME}'
+# export ADMIN_NAME='${nodeData.ADMIN_NAME}'
+# export ADMIN_PASSWORD='${nodeData.ADMIN_PASSWORD}'
+
+
+# CUSTOM_NPM_SCRIPT__OPTIONAL
+
+docker-compose up -d --build
+        """
+
+        if (wipeApp) {
+          sh 'sudo docker-compose down -v -t 0  --remove-orphans'
+        }
+
+        // Unstash deploy file:
+        sh 'sudo docker volume create {{snake_case name}}_config'
+        def dappConfigVolumePath = sh(
+            returnStdout: true,
+            script: 'sudo docker volume inspect {{snake_case name}}_config | jq .[0].Mountpoint'
+        ).trim()
+        // Can't cd directly into docker volume path (requires sudo su), so copying deploy file into tmp/
+        sh 'mkdir tmp'
+        dir('tmp') {
+          unstash 'deployFile'
+          sh "sudo cp {{lower name}}.deploy.yaml ${dappConfigVolumePath}/{{lower name}}.deploy.yaml"
+        }
+        sh 'rm -rf tmp'
+        
+        sh 'sudo bash run-app.sh'
+        
+      }
+    }
+  }
+}
+
+def getServiceToken(nodeData) {
+  script {
+    def b64string = sh(returnStdout: true, script: "python -c \"import base64; print(base64.b64encode('${nodeData.OAUTH_CLIENT_ID}:${nodeData.OAUTH_CLIENT_SECRET}'))\"").trim()
+    def tokenEndpoint = sh(returnStdout: true, script: "curl -s  ${nodeData.OAUTH_DISCOVERY_URL} | jq .token_endpoint | tr -d '\"'").trim()
+    def serviceToken = sh(
+        returnStdout: true,
+        script: "curl -s -X POST '${tokenEndpoint}' " +
+            "-H 'Content-Type: application/x-www-form-urlencoded' -H 'Authorization: Basic ${b64string}' " +
+            "--data-urlencode 'grant_type=client_credentials' | jq -r .access_token"
+    ).trim()
+    if ("${serviceToken}" == null ) {
+      echo "Unable to obtain service token"
+      currentBuild.result = 'FAILURE'
+      sh "exit 1"
+    }
+    echo "serviceToken: ${serviceToken}"
+    return "${serviceToken}"
+  }
+}
+
+def waitForHealthyDappContainers() {
+  script {
+    echo "Waiting for the 4 {{snake_case name}} containers to become healthy..."
+    for (int i = 0; i < 50; i++) {
+      if (sh(returnStdout: true, script: "sudo docker-compose --log-level ERROR ps | grep '(healthy)' | wc -l").trim() == "4") {
+        saveDappLogsToArtifacts()
+        return true
+      } else {
+        sleep 2
+      }
+    }
+    saveDappLogsToArtifacts()
+    error ("Failed to get exactly 4 {{snake_case name}} containers healthy")
+  }
+}
+
+def saveDappLogsToArtifacts() {
+  def dapp_logs_dir = "${env.NODE_NAME}__dapp_docker_logs"
+  sh "rm -rf ${dapp_logs_dir} && mkdir -p ${dapp_logs_dir}"
+  sh "bash -c 'sudo docker ps > ${dapp_logs_dir}/docker_ps.log 2>&1' || true"
+  sh "bash -c 'sudo docker logs {{snake_case name}}_backend_1 > ${dapp_logs_dir}/{{snake_case name}}_backend_1.log 2>&1' || true"
+  sh "bash -c 'sudo docker logs {{snake_case name}}_ui_1 > ${dapp_logs_dir}/{{snake_case name}}_ui_1.log 2>&1' || true"
+  sh "bash -c 'sudo docker logs {{snake_case name}}_nginx_1 > ${dapp_logs_dir}/{{snake_case name}}_nginx_1.log 2>&1' || true"
+  archiveArtifacts artifacts: "${dapp_logs_dir}/**", fingerprint: true
+}
+
+
+
+def createDappUser(fullHost, serviceToken, authCookieName) {
+  script {
+    // Should return 404 when user has no membership and 200 when user has one:
+    def successExitCodes = [0, 22]
+    def exitCode = sh(returnStatus: true, script: "curl -I --location --request GET 'https://${fullHost}/api/v1/users/me' --header 'Cookie: ${authCookieName}=${serviceToken}' --fail")
+    if (!successExitCodes.contains(exitCode)) {
+      echo "unexpected result for {{lower name}} user creation"
+      currentBuild.result = 'FAILURE'
+      sh "exit 1"
+    }
+  }
+}
+
+// Note: If need this function - update it with new 'create' or 'request' commands format before using it.
+//def requestMembership(serviceToken, role) {
+//  sh "sudo docker exec {{snake_case name}}_backend_1 npm run membership-util -- request --role '${role}' --token '${serviceToken}'"
+//}
+
+
+// TODO: Remove as no longer required or supported on Mercata
+def approveAllMemberships() {
+  script {
+    sleep 10 // to make sure that secondary apps can send their approvals before we look for them
+    def membershipRequests = sh(returnStdout: true, script: "sudo docker exec {{snake_case name}}_backend_1 bash -c \"npm run membership-util ls | grep 'NEW' \" | awk '{print \$4,\$6}'").trim()
+    echo "${membershipRequests}"
+    // The following approval command may differ from project to project, adjust to your needs (e.g. remove ORG related stuff etc.)
+    sh """#!/bin/bash -lex
+      while IFS= read -r request; do
+        echo \$request
+        ORG_ADDRESS=\$(echo "\${request}" | awk '{print \$1}')
+        ORG_NAME=\$(echo "\${request}" | awk '{print \$2}')
+        echo "Approving membership for org: '\$ORG_NAME' with orgAddress: '\$ORG_ADDRESS'"
+        # Approve
+        sudo docker exec {{snake_case name}}_backend_1 bash -c \"npm run membership-util -- approve -a "\${ORG_ADDRESS}"\"
+        # Process
+      done <<< '''${membershipRequests}'''
+    """
+  }
+}
+
+def waitForHealthyNetwork(MONITOR_DATA) {
+  script {
+    echo "Waiting for network nodes to be in-sync and healthy..."
+    for (int i = 0; i < 3000; i++) {
+      if (sh(returnStatus: true, script: "curl --silent ${MONITOR_DATA.NETWORK_HEALTH_URL} | grep '\"needsAttention\":false'") != 0) {
+        sleep 2
+      } else {
+        // If healthy - check in few seconds again to make sure it wasn't temporary while syncned to the same block number. Monitor should probably be handling this itself in the future before showing network healthy.
+        sleep 20
+        if (sh(returnStatus: true, script: "curl --silent ${MONITOR_DATA.NETWORK_HEALTH_URL} | grep '\"needsAttention\":false'") != 0) {
+          sleep 2
+        } else {
+          sleep 20
+          if (sh(returnStatus: true, script: "curl --silent ${MONITOR_DATA.NETWORK_HEALTH_URL} | grep '\"needsAttention\":false'") != 0) {
+            sleep 2
+          } else {
+            return true
+          }
+        }
+      }
+    }
+    error ("Failed to get the STRATO nodes healthy after resync")
+  }
+}
+
+def getCurrentNodeAddressAndPubkey(nodeData) {
+  script {
+    // TODO: call Metadata API endpoint instead of using config values
+    return [address: nodeData.STRATO_ADDRESS, pubkey: nodeData.STRATO_PUBKEY]
+  }
+}
+
+// TODO: Update the deployment scripts to have the env data in env vars rather than a .env file, for better security
+def createDotEnvFile(nodeData) {
+  withCredentials([
+      usernamePassword(credentialsId: '{{lower name}}-dev-aws-iam-user', passwordVariable: 'AWS_IAM_USER_ACCESS_KEY', usernameVariable: 'AWS_IAM_USER_KEY_ID'),
+  ]) {
+    writeFile file: ".env", text: """#!/bin/bash
+GLOBAL_ADMIN_NAME='${nodeData.ADMIN_NAME}'
+GLOBAL_ADMIN_PASSWORD='${nodeData.ADMIN_PASSWORD}'
+EXT_STORAGE_S3_ACCESS_KEY_ID='${AWS_IAM_USER_KEY_ID}'
+EXT_STORAGE_S3_SECRET_ACCESS_KEY='${AWS_IAM_USER_ACCESS_KEY}'
+EXT_STORAGE_S3_BUCKET={{lower name}}-dev-bucket-name-here
+"""
+  }
+}
+
+/******
+ * Test container functions
+ */
+def runAppBackendTestContainer(nodeData) {
+  sh "cp /datadrive/letsencrypt-ssl/server.pem nginx-docker/ssl/"
+  sh "cp /datadrive/letsencrypt-ssl/server.key nginx-docker/ssl/"
+  script {
+    sh 'rm -f run-backendtest.sh'
+    def authCookieName = "{{lower name}}-dev${nodeData.NUMBER}-auth"
+    
+    //sh 'echo "members: []" > server/config/boot_members.yaml' // for potential future use 
+    
+    sh 'sudo docker-compose build backend'
+    
+    dir('backend') {
+      lib.createDotEnvFile(nodeData)
+    }
+    
+    writeFile file: "run-backendtest.sh", text: """#!/bin/bash
+set -e
+
+export IS_BOOTNODE='true'
+export API_DEBUG='false'
+export SERVER_HOST='https://${nodeData.APP_HOST}'
+export SERVER_IP='${nodeData.APP_IP}'
+export NODE_LABEL='node${nodeData.NUMBER}'
+export NODE_PUBLIC_KEY='${nodeData._PUBKEY}'
+export OAUTH_APP_TOKEN_COOKIE_NAME='${authCookieName}'
+export OAUTH_OPENID_DISCOVERY_URL='${nodeData.OAUTH_DISCOVERY_URL}'
+export OAUTH_CLIENT_ID='${nodeData.OAUTH_CLIENT_ID}'
+export OAUTH_CLIENT_SECRET='${nodeData.OAUTH_CLIENT_SECRET}'
+export OAUTH_TOKEN_USERNAME_PROPERTY='preferred_username'
+export OAUTH_TOKEN_USERNAME_PROPERTY_SERVICE_FLOW='preferred_username'
+export STRATO_NODE_PROTOCOL='https'
+export STRATO_NODE_HOST='${nodeData.STRATO_HOSTNAME}:${nodeData.STRATO_PORT}'
+export STRATO_LOCAL_IP='${nodeData.STRATO_LOCAL_IP ?: ""}'
+export SSL=true
+export SSL_CERT_TYPE=pem
+# export DAEMONS_ENABLED='true'
+
+
+sed -i '/restart:/d' docker-compose.yml
+docker-compose -p ${dcProjectName} up -d --no-deps backend
+    """
+    
+    cleanupTestContainers()
+    sh 'sudo bash run-backendtest.sh'
+    waitForHealthyBackendTestContainer()
+  }
+}
+
+def cleanupTestContainers() {
+  sh "sudo docker-compose -p ${dcProjectName} down -v -t 0  --remove-orphans"
+}
+
+def waitForHealthyBackendTestContainer() {
+  script {
+    echo "Waiting for the {{lower name}} backend test container to become healthy..."
+    for (int i = 0; i < 100; i++) {
+      if (sh(returnStdout: true, script: "sudo docker-compose -p ${dcProjectName} --log-level ERROR ps | grep '(healthy)' | wc -l").trim() == "1") {
+        saveTestContainerLogsToArtifacts()
+        return true
+      } else {
+        sh "sudo docker logs --tail=10 ${dcProjectName}_backend_1"
+        sleep 2
+      }
+    }
+    saveTestContainerLogsToArtifacts()
+    error ("Failed to get {{lower name}} backend test container healthy")
+  }
+}
+
+def saveTestContainerLogsToArtifacts() {
+  def dapp_logs_dir = "${env.NODE_NAME}__dapp_test_docker_logs"
+  sh "rm -rf ${dapp_logs_dir} && mkdir -p ${dapp_logs_dir}"
+  sh "bash -c 'sudo docker ps > ${dapp_logs_dir}/docker_ps.log 2>&1' || true"
+  sh "bash -c 'sudo docker logs ${dcProjectName}_backend_1 > ${dapp_logs_dir}/${dcProjectName}_backend_1.log 2>&1' || true"
+  archiveArtifacts artifacts: "${dapp_logs_dir}/**", fingerprint: true
+}
+
+/**
+ * End of Test container functions
+ ******/
+
+
+
+return this

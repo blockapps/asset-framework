@@ -1,0 +1,16 @@
+# WARNING: this docker-compose.yml is only used for development/debugging. For prod deployment refer to root docker-compose.yml
+version: "2.1"
+services:
+  nginx:
+    environment:
+      - HOST_IP=${HOST_IP}
+      - SSL=${SSL:-false}
+      - SSL_CERT_TYPE=${SSL_CERT_TYPE:-crt}
+    build: .
+    image: {{snake_case name}}-nginx
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./ssl:/tmp/ssl:ro
+    restart: always

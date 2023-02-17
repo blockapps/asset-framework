@@ -1,0 +1,201 @@
+paths:
+  /{{lower name}}/:
+    get:
+      security:              
+        - bearerAuth: []                    
+      tags:               
+        - {{name}}        
+      summary: Retrieve {{lower name}}
+      produces:
+      - application/json
+      responses:         
+        200:
+          description: Array of {{lower name}}s
+    post:  
+      security:              
+        - bearerAuth: []                  
+      tags:               
+        - {{name}}        
+      summary: Create a {{lower name}}
+      produces:
+      - application/json
+      requestBody:         
+        description: It enable user to create {{lower name}}
+        required: true
+        content:
+          'application/json': 
+            schema:       
+              $ref: '#/definitions/create{{name}}' 
+      responses:         
+        200:
+          description: Object of create {{lower name}}
+  /{{lower name}}/{address}/{chainId}:
+    get:                 
+      security:              
+        - bearerAuth: []   
+      tags:               
+        - {{name}}        
+      summary: Retrieve a {{lower name}}
+      produces:
+      - application/json
+      parameters:         
+      - in: path          
+        name: address     
+        description: address to retrieve the {{lower name}}
+        required: true
+      - in: path          
+        name: chainId     
+        description: chainId corresponding to the address
+        required: true
+        schema:       
+          $ref: '#/definitions/fetch{{name}}' 
+      responses:         
+        200:
+          description: Retrieve a {{lower name}}
+  /{{lower name}}/update:
+    put:    
+      security:              
+        - bearerAuth: []                
+      tags:               
+        - {{name}}        
+      summary: Update a {{lower name}}
+      produces:
+      - application/json
+      requestBody:         
+        description: It enable user to update a {{lower name}}
+        required: true
+        content:
+          'application/json':
+            schema:       
+              $ref: '#/definitions/update{{name}}' 
+      responses:         
+        200:
+          description: Retrieve a updated {{lower name}}
+  /{{lower name}}/{address}/{chainId}/audit:
+    get:     
+      security:              
+        - bearerAuth: []               
+      tags:               
+        - {{name}}        
+      summary: Audit {{lower name}}
+      produces:
+      - application/json
+      parameters:         
+      - in: path          
+        name: address     
+        description: address to retrieve the {{lower name}}
+        required: true
+      - in: path          
+        name: chainId     
+        description: chainId corresponding to the address
+        required: true
+        schema:       
+          $ref: '#/definitions/audit{{name}}' 
+      responses:         
+        200:
+          description: List of audit
+  /{{lower name}}/transferOwnership:
+    post:              
+      security:              
+        - bearerAuth: []      
+      tags:               
+        - {{name}}        
+      summary: Transfer ownership
+      produces:
+      - application/json
+      requestBody:         
+        description: It enable user to transfer ownership
+        required: true
+        content:
+          'application/json':
+            schema:       
+              $ref: '#/definitions/transferOwnership' 
+      responses:         
+        200:
+          description: indicates success of transfer ownership
+definitions:        
+  fetch{{name}}:
+    address:
+      type: string
+    chainId:
+      type: string
+  create{{name}}:
+    type: object
+    properties:
+      machineArgs:
+        type: object
+        properties:
+        {{#each attributes}}
+        {{#ifeq type "text"}}
+          {{field}}:
+            type: string
+        {{/ifeq}}
+        {{#ifeq type "integer"}}
+          {{field}}:
+            type: number
+        {{/ifeq}}
+        {{#ifeq type "datetime"}}
+          {{field}}:
+            type: number
+        {{/ifeq}}
+        {{#ifeq type "boolean"}}
+          {{field}}:
+            type: boolean
+        {{/ifeq}}
+        {{#ifeq type "references"}}
+          {{field}}:
+            type: array
+            items:
+              type: object
+        {{/ifeq}}
+        {{/each}}   
+      isPublic:
+        type: boolean
+  update{{name}}:
+    type: object
+    properties:
+      address:
+        type: string
+      chainId:
+        type: string
+      updates:
+        type: object
+        properties:
+        {{#each attributes}}
+        {{#ifeq type "text"}}
+          {{field}}:
+            type: string
+        {{/ifeq}}
+        {{#ifeq type "integer"}}
+          {{field}}:
+            type: number
+        {{/ifeq}}
+        {{#ifeq type "datetime"}}
+          {{field}}:
+            type: number
+        {{/ifeq}}
+        {{#ifeq type "boolean"}}
+          {{field}}:
+            type: boolean
+        {{/ifeq}}
+        {{#ifeq type "references"}}
+          {{field}}:
+            type: array
+            items:
+              type: object
+        {{/ifeq}}
+        {{/each}}  
+  audit{{name}}:
+    address:
+      type: string
+    chainId:
+      type: string
+  transferOwnership:
+    type: object
+    properties:
+      address:
+        type: string
+      chainId:
+        type: string
+      newOwner:
+        type: string

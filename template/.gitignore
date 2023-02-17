@@ -1,0 +1,14 @@
+# ba-rest config file
+**/config.yaml
+
+# OS files
+**/.DS_Store
+
+# env files
+*.env
+
+# deploy files
+**/*.deploy.yaml
+
+# Dependency directories
+**/node_modules

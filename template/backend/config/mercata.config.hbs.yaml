@@ -1,0 +1,36 @@
+{{#with deploy.mercata}}
+apiDebug: {{apiDebug}}
+timeout: 600000
+VM: SolidVM
+configDirPath: {{configDirPath}}
+deployFilename: {{deployFilename}}
+orgDeployFilename: {{orgDeployFilename}}
+serverHost: {{serverHost}}
+serverIP: {{serverIP}}
+orgName: {{orgName}}
+bootMembersFilename: boot_members.yaml
+
+nodes:
+  - id: 0
+    {{#with node}}
+    label: {{label}}
+    url: {{url}}
+    port: 30303
+    oauth:
+      {{#with oauth}}
+      appTokenCookieName: {{appTokenCookieName}}
+      appTokenCookieMaxAge: 7776000000
+      openIdDiscoveryUrl: >-
+        {{openIdDiscoveryUrl}}
+      clientId: {{clientId}}
+      clientSecret: {{clientSecret}}
+      scope: {{scope}}
+      serviceOAuthFlow: {{serviceOAuthFlow}}
+      redirectUri: {{redirectUri}}
+      logoutRedirectUri: {{logoutRedirectUri}}
+      tokenField: {{tokenField}}
+      tokenUsernameProperty: {{tokenUsernameProperty}}
+      tokenUsernamePropertyServiceFlow: {{tokenUsernamePropertyServiceFlow}}
+      {{/with}}
+    {{/with}}
+{{/with}}

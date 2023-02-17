@@ -1,0 +1,29 @@
+{
+  "scripts": {
+    "mocha-babel": "node_modules/.bin/mocha --require @babel/register --inline-diffs --exit",
+    "token-getter": "babel-node node_modules/blockapps-rest/dist/util/oauth.client.js --flow authorization-code --config config/${CONFIG:-mercata}.config.yaml",
+    "start": "babel-node index",
+    "start:prod": "NODE_ENV=production babel-node index",
+    "deploy": "cp config/${CONFIG:-mercata}.config.yaml ${CONFIG_DIR_PATH:-.}/config.yaml && yarn mocha-babel dapp/dapp/dapp.deploy.js --config ${CONFIG_DIR_PATH:-.}/config.yaml",
+    "deploy:secondary-org": "cp config/${CONFIG:-mercata}.config.yaml ${CONFIG_DIR_PATH:-.}/config.yaml && yarn mocha-babel dapp/dapp/dapp.deploy-org.js --config ${CONFIG_DIR_PATH:-.}/config.yaml",
+    
+    "test": "yarn mocha-babel dapp/**/*.test.js && yarn mocha-babel test/v1 -b",
+    "test:dapp": "yarn mocha-babel dapp/dapp/test/dapp.test.js -b",
+    "test:e2e": "yarn mocha-babel dapp/dapp/test/e2e.test.js -b",
+    "test:appPermission": "yarn mocha-babel dapp/permissions/app/test -b",
+    "test:user": "yarn mocha-babel dapp/users/test -b",
+    {{#each assets}}
+    "test:{{lower name}}": "yarn mocha-babel dapp/assets/{{name}}/test -b",
+    {{/each}}
+    {{#each assets}}
+    "test:api:{{lower name}}": "yarn mocha-babel test/v1/{{lower name}}.test.js -b",
+    {{/each}}
+    "test:api": "yarn mocha-babel test/v1/ -b",
+    "addToDapp": "babel-node membership-utility/addToDapp.js",
+    "clean": "rm -f ${CONFIG_DIR_PATH:-config}/*.deploy.yaml ${CONFIG_DIR_PATH:-config}/testdeploy.*"
+  },
+  "engines": {
+    "npm": "^6.14.16",
+    "node": "^14.19.1"
+  }
+}

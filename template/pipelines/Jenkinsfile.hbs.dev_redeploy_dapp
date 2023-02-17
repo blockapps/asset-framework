@@ -1,0 +1,173 @@
+pipeline {
+  agent { label "{{lower name}}-dev1" }
+  options {
+    disableConcurrentBuilds()
+    timestamps()
+  }
+  parameters {
+    string(name: '{{loud name}}_REPO_REFSPEC', defaultValue: 'develop', description: 'Refspec of blockapps/{{lower name}} git repo. E.g. a branch name or the commit hash.')
+    booleanParam(name: 'CLEAN_{{loud name}}_DATA', defaultValue: false, description: 'Either to remove the docker volumes and deploy {{name}} from scratch')
+  }
+
+  stages {
+    stage('Preconfigure') {
+      steps {
+        wrap([$class: 'BuildUser']) {
+          script {
+            try {
+              currentBuild.description = "{{name}}_refspec:${env.{{loud name}}_REPO_REFSPEC} CLEAN_{{loud name}}_DATA: ${env.CLEAN_{{loud name}}_DATA} // ${BUILD_USER_FIRST_NAME}"
+            } catch (e) {
+              currentBuild.description = "{{name}}_refspec:${env.{{loud name}}_REPO_REFSPEC} CLEAN_{{loud name}}_DATA: ${env.CLEAN_{{loud name}}_DATA} // anon"
+            }
+          }
+        }
+
+        script {
+          lib = load("${env.WORKSPACE}/pipelines/Jenkinsfile.library")
+          NODE_DATA = load("${env.WORKSPACE}/pipelines/Jenkinsfile.dev_config").NODE_DATA
+        }
+      }
+    }
+
+    stage('Collect nodes metadata') {
+      parallel {
+        stage('Get address of {{lower name}}-dev1') {
+          // agent { label "{{lower name}}-dev1" } // is default
+          steps {
+            script {
+              def addressAndPubkey = lib.getCurrentNodeAddressAndPubkey()
+              NODE_DATA.NODE1._ADDRESS = addressAndPubkey.address
+              NODE_DATA.NODE1._PUBKEY = addressAndPubkey.pubkey
+            }
+          }
+        }
+        stage('Get address of {{lower name}}-dev2') {
+          agent { label "{{lower name}}-dev2" }
+          steps {
+            script {
+              def addressAndPubkey = lib.getCurrentNodeAddressAndPubkey()
+              NODE_DATA.NODE2._ADDRESS = addressAndPubkey.address
+              NODE_DATA.NODE2._PUBKEY = addressAndPubkey.pubkey
+            }
+          }
+        }
+        stage('Get address of {{lower name}}-dev3') {
+          agent { label "{{lower name}}-dev3" }
+          steps {
+            script {
+              def addressAndPubkey = lib.getCurrentNodeAddressAndPubkey()
+              NODE_DATA.NODE3._ADDRESS = addressAndPubkey.address
+              NODE_DATA.NODE3._PUBKEY = addressAndPubkey.pubkey
+            }
+          }
+        }
+      }
+    }
+
+    stage('Run app on bootnode (dev1)') {
+      // agent { label "{{lower name}}-dev1" } // is default
+      steps {
+        script {
+          lib.runAppBootNode(NODE_DATA.NODE1, NODE_DATA, env.{{loud name}}_REPO_REFSPEC, params.CLEAN_{{loud name}}_DATA)
+        }
+      }
+    }
+
+    stage('Run app on secondary nodes') {
+      parallel {
+        stage('Run app on {{lower name}}-dev2') {
+          agent { label "{{lower name}}-dev2" }
+          steps {
+            script {
+              lib.runAppSecondaryNode(NODE_DATA.NODE2, env.{{loud name}}_REPO_REFSPEC, params.CLEAN_{{loud name}}_DATA)
+            }
+          }
+        }
+        stage('Run app on {{lower name}}-dev3') {
+          agent { label "{{lower name}}-dev3" }
+          steps {
+            script {
+              lib.runAppSecondaryNode(NODE_DATA.NODE3, env.{{loud name}}_REPO_REFSPEC, params.CLEAN_{{loud name}}_DATA)
+            }
+          }
+        }
+      }
+    }
+
+// TODO: Remove as no longer required or supported on Mercata
+//    stage('Approve memberships of secondary nodes') {
+//      // agent { label "{{lower name}}-dev1" } // is default
+//      when { equals expected: true, actual: params.CLEAN_{{loud name}}_DATA }
+//      steps {
+//        script {
+//          lib.approveAllMemberships()
+//        }
+//      }
+//    }
+
+    stage('Wait for secondary nodes to be healthy') {
+      parallel {
+        stage('Wait for {{lower name}}-dev2 to be healthy') {
+          agent { label "{{lower name}}-dev2" }
+          steps {
+            script {
+              dir('{{lower name}}') {
+                lib.waitForHealthyDappContainers()
+              }
+            }
+          }
+        }
+        stage('Wait for {{lower name}}-dev3 to be healthy') {
+          agent { label "{{lower name}}-dev3" }
+          steps {
+            script {
+              dir('{{lower name}}') {
+                lib.waitForHealthyDappContainers()
+              }
+            }
+          }
+        }
+      }
+    }
+
+  }
+  
+  post {
+
+    success {
+      slackSend(
+          color: 'good',
+          message: "{{lower name}}-dev {{loud name}} APP was redeployed successfully with {{loud name}}_REPO_REFSPEC '${env.{{loud name}}_REPO_REFSPEC}': Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}-ci',
+          color: 'good',
+          message: "{{lower name}}-dev {{loud name}} APP was redeployed successfully with {{loud name}}_REPO_REFSPEC '${env.{{loud name}}_REPO_REFSPEC}': Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}',
+          color: 'good',
+          message: "{{lower name}}-dev {{loud name}} APP was redeployed successfully with {{loud name}}_REPO_REFSPEC '${env.{{loud name}}_REPO_REFSPEC}': Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+    }
+
+    failure {
+      slackSend(
+          color: 'danger',
+          message: "{{lower name}}-dev {{loud name}} APP redeployment failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}-ci',
+          color: 'danger',
+          message: "{{lower name}}-dev {{loud name}} APP redeployment failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}',
+          color: 'danger',
+          message: "{{lower name}}-dev {{loud name}} APP redeployment failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+    }
+  }
+}
+
+

@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+pipeline {
+  agent {
+    label "{{lower name}}-dev1"
+  }
+  stages {
+
+    stage('Init') {
+      steps {
+        script {
+          lib = load("${env.WORKSPACE}/pipelines/Jenkinsfile.library")
+          NODE_DATA = load("${env.WORKSPACE}/pipelines/Jenkinsfile.dev_config").NODE_DATA
+          dcProjectName='{{lower name}}test'
+        }
+      }
+    }
+  
+    stage('Collect nodes metadata') {
+      parallel {
+        stage('Get address of {{lower name}}-dev1') {
+          // agent { label "{{lower name}}-dev1" } // is default
+          steps {
+            script {
+              def addressAndPubkey = lib.getCurrentNodeAddressAndPubkey()
+              NODE_DATA.NODE1._ADDRESS = addressAndPubkey.address
+              NODE_DATA.NODE1._PUBKEY = addressAndPubkey.pubkey
+            }
+          }
+        }
+        // Other nodes to be added here if required for the test run
+      }
+    }
+
+    stage('Deploy {{name}} backend') {
+      // agent { label "{{lower name}}-dev1" } // is default
+      steps {
+        script {
+          lib.runAppBackendTestContainer(NODE_DATA.NODE1)
+        }
+      }
+    }
+
+    stage('Test {{name}} backend') {
+      // agent { label "{{lower name}}-dev1" } // is default
+      steps {
+        script {
+          writeFile file: ".env", text: """
+#EXAMPLE_USER1_NAME=${NODE_DATA.NODE1.TEST_USER1}
+        """
+          sh "sudo docker cp .env ${dcProjectName}_backend_1:/usr/src/backend/.env"
+          sh "rm -f .env"
+          sh "sudo docker exec ${dcProjectName}_backend_1 bash -c 'CONFIG=generated yarn test'"
+        }
+      }
+    }
+
+  }
+
+  post {
+
+    // Uncomment to wipe and remove a test container after the test is finished (in most cases we want to keep the container for debugging)
+    //always {
+    //  // agent { label "{{lower name}}-dev1" } // is default
+    //  lib.cleanupTestContainers()
+    //}
+
+    success {
+      slackSend(
+          color: 'good',
+          message: "Build Successful: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}-ci',
+          color: 'good',
+          message: "Build Successful: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+    }
+
+    unstable {
+      slackSend(
+          color: 'good',
+          message: "Build Unstable: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}-ci',
+          color: 'warning',
+          message: "Build Unstable: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+    }
+
+    failure {
+      slackSend(
+          color: 'danger',
+          message: "Build failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      slackSend(
+          channel: '#dev-{{lower name}}-ci',
+          color: 'danger',
+          message: "Build failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+      )
+      script {
+        if (env.BRANCH_NAME == 'develop') {
+          slackSend(
+              channel: '#dev-{{lower name}}',
+              color: 'danger',
+              message: "Develop branch build failed: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+          )
+        }
+      }
+    }
+
+    fixed {
+      script {
+        if (env.BRANCH_NAME == 'develop') {
+          slackSend(
+              channel: '#dev-{{lower name}}',
+              color: 'good',
+              message: "Develop branch build *is fixed after it was failing*: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})"
+          )
+        }
+      }
+    }
+  }
+}
+
