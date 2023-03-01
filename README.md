@@ -25,11 +25,11 @@ Out of the box, the Asset Framework includes (but is not limited to) the followi
 ## Generating your Project
 To run the Asset Framework tool, several things are needed.
 
-1. Node JS
-2. Yarn 🐈
-3. Strato Mercata membership and accessible node
+1. [Node JS](https://nodejs.org/en/download/) 
+2. [Yarn 🐈](https://classic.yarnpkg.com/lang/en/docs/install/#debian-stable)
+3. Strato Mercata membership and accessible node [Sign Up Here!](https://login.blockapps.net/)
 4. A completed Asset Framework Data Model spreadsheet describing the application's asset data model.
-5. Docker
+5. [Docker](https://docs.docker.com/get-docker/)
 
 Yarn must be installed for this project to work. Yarn will handle many aspects and allow the project to be built, please reference the [Yarn installation guide](https://classic.yarnpkg.com/lang/en/docs/install/) for more information on how to install.
 
