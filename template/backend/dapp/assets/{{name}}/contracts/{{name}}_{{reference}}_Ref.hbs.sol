@@ -1,4 +1,3 @@
-pragma solidvm 3.4;
 
 import "/blockapps-sol/lib/rest/contracts/RestStatus.sol";
 
